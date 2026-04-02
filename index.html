@@ -172,6 +172,13 @@ input[type=range]::-webkit-slider-thumb:hover { background:#fff; }
   <div class="sec">
     <div class="sec-lbl">Color</div>
     <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-lbl">Background</span></div>
+      <div class="btn-group" id="bg-group">
+        <button class="btn active" data-bg="dark">Dark</button>
+        <button class="btn" data-bg="light">Light</button>
+      </div>
+    </div>
+    <div class="ctrl">
       <div class="ctrl-row"><span class="ctrl-lbl">Accent</span></div>
       <div class="btn-group" id="accent-group"></div>
     </div>
@@ -232,18 +239,18 @@ function seedLabel(s) {
 // Blue is always the primary. Fills span navy → core blue → pale sky.
 // Background is a saturated mid-blue so the full range has room to breathe.
 const PRIMARY_BLUE = {
-  bg: '#1038A8',
-  // Dark navy → rich blue → pale sky — used across rings and background blobs
+  bgDark:  '#00244D', // navy
+  bgLight: '#D1EFFE', // light blue
   fills: [
-    '#00244D', // navy
+    '#00244D',
     '#022870',
     '#083898',
     '#1040B8',
-    '#244FF1', // core blue
+    '#244FF1',
     '#4A6EF8',
     '#7898FC',
     '#A8C4FE',
-    '#D1EFFE', // pale sky
+    '#D1EFFE',
   ],
 };
 
@@ -274,6 +281,7 @@ const state = {
   complexity: 0.40,
   gap: 0.20,
   variation: 0.55,
+  bgMode: 'dark',
   accentColor: 'green',
   accentMix: 0.15,
   ratioId: '1:1',
@@ -281,64 +289,16 @@ const state = {
 
 function getPalette(p) {
   return {
-    bg:          PRIMARY_BLUE.bg,
+    bg:          p.bgMode === 'dark' ? PRIMARY_BLUE.bgDark : PRIMARY_BLUE.bgLight,
     fills:       PRIMARY_BLUE.fills,
     accentFills: ACCENTS[p.accentColor].fills,
   };
 }
 
 // ── BACKGROUND BUILDER ────────────────────────────────────────────────────────
-// Organic mesh gradient: overlapping soft radial blobs of primary color shades.
-// Background is mid-value primary; blobs add lighter and darker regions organically.
-function buildBackground(p, W, H) {
-  const pal    = getPalette(p);
-  const origin = ORIGINS[p.originIdx];
-  const ox     = origin.x * W;
-  const oy     = origin.y * H;
-  const seed   = (parseInt(p.seed,10) || 1) >>> 0;
-  const rng    = mulberry32(seed ^ 0xa1b2c3d4);
-  const long   = Math.max(W, H);
-  const nFills = pal.fills.length;
-
-  const blobs = [];
-
-  // Dominant light glow from origin direction
-  {
-    const bx = Math.min(Math.max(ox, -0.05*W), 1.05*W);
-    const by = Math.min(Math.max(oy, -0.05*H), 1.05*H);
-    blobs.push({
-      x: bx, y: by,
-      r: long * (0.85 + rng() * 0.45),
-      color: pal.fills[Math.floor(nFills * 0.78)], // light shade
-      a0: 0.20 + rng() * 0.12,
-    });
-  }
-
-  // 3–5 lighter blobs scattered across canvas
-  const lightN = 3 + Math.floor(rng() * 3);
-  for (let i = 0; i < lightN; i++) {
-    blobs.push({
-      x: (rng() * 1.2 - 0.1) * W,
-      y: (rng() * 1.2 - 0.1) * H,
-      r: long * (0.18 + rng() * 0.32),
-      color: pal.fills[Math.floor(nFills * (0.55 + rng() * 0.40))], // light-to-pale
-      a0: 0.08 + rng() * 0.14,
-    });
-  }
-
-  // 2–3 darker blobs for depth
-  const darkN = 2 + Math.floor(rng() * 2);
-  for (let i = 0; i < darkN; i++) {
-    blobs.push({
-      x: (rng() * 1.2 - 0.1) * W,
-      y: (rng() * 1.2 - 0.1) * H,
-      r: long * (0.15 + rng() * 0.28),
-      color: pal.fills[Math.floor(rng() * nFills * 0.35)], // dark shades
-      a0: 0.14 + rng() * 0.18,
-    });
-  }
-
-  return { bg: pal.bg, blobs };
+function buildBackground(p) {
+  const pal = getPalette(p);
+  return { bg: pal.bg };
 }
 
 // ── SCENE BUILDER ─────────────────────────────────────────────────────────────
@@ -440,23 +400,12 @@ function renderToCanvas(canvas, p) {
   ctx.save();
   ctx.scale(dpr, dpr);
 
-  const { bg, blobs }    = buildBackground(p, W, H);
+  const { bg }               = buildBackground(p);
   const { ox, oy, segments } = buildScene(p, W, H);
 
   // Solid bg
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
-
-  // Mesh gradient blobs
-  for (const b of blobs) {
-    const [r,g,c] = hexToRgb(b.color);
-    const gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    gr.addColorStop(0,    `rgba(${r},${g},${c},${b.a0.toFixed(3)})`);
-    gr.addColorStop(0.55, `rgba(${r},${g},${c},${(b.a0*0.25).toFixed(3)})`);
-    gr.addColorStop(1,    `rgba(${r},${g},${c},0)`);
-    ctx.fillStyle = gr;
-    ctx.fillRect(0, 0, W, H);
-  }
 
   // Arc segments
   ctx.save();
@@ -495,22 +444,8 @@ function arcPathD(ox, oy, ri, ro, ss, se) {
 }
 
 function renderToSVG(p, W, H) {
-  const { bg, blobs }        = buildBackground(p, W, H);
+  const { bg }               = buildBackground(p);
   const { ox, oy, segments } = buildScene(p, W, H);
-  const f = v => (Math.round(v*10)/10).toFixed(1);
-
-  const bgDefs = blobs.map((b,i) => {
-    const [r,g,c] = hexToRgb(b.color);
-    return `<radialGradient id="b${i}" gradientUnits="userSpaceOnUse" cx="${f(b.x)}" cy="${f(b.y)}" r="${f(b.r)}">
-      <stop offset="0%"   stop-color="rgb(${r},${g},${c})" stop-opacity="${b.a0.toFixed(3)}"/>
-      <stop offset="55%"  stop-color="rgb(${r},${g},${c})" stop-opacity="${(b.a0*0.25).toFixed(3)}"/>
-      <stop offset="100%" stop-color="rgb(${r},${g},${c})" stop-opacity="0"/>
-    </radialGradient>`;
-  }).join('\n    ');
-
-  const bgRects = blobs.map((_,i) =>
-    `  <rect width="${W}" height="${H}" fill="url(#b${i})"/>`
-  ).join('\n');
 
   const pathEls = segments.map(({ ri, ro, ss, se, color, opacity }) => {
     const d = arcPathD(ox, oy, ri, ro, ss, se);
@@ -523,10 +458,8 @@ function renderToSVG(p, W, H) {
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
     <clipPath id="bounds"><rect width="${W}" height="${H}"/></clipPath>
-    ${bgDefs}
   </defs>
   <rect width="${W}" height="${H}" fill="${bg}"/>
-${bgRects}
   <g clip-path="url(#bounds)">
 ${pathEls.join('\n')}
   </g>
@@ -640,6 +573,16 @@ bindSlider('complexity', 'complexity', 'complexity-val', v => v.toFixed(2));
 bindSlider('gap',        'gap',        'gap-val',        v => v.toFixed(2));
 bindSlider('variation',  'variation',  'variation-val',  v => v.toFixed(2));
 bindSlider('accent-mix', 'accentMix',  'accent-mix-val', v => Math.round(v*100)+'%');
+
+// Background mode
+document.getElementById('bg-group').querySelectorAll('[data-bg]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-bg]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.bgMode = btn.dataset.bg;
+    scheduleRender();
+  });
+});
 
 // Accent color buttons (green, yellow, red)
 function buildAccentButtons() {
