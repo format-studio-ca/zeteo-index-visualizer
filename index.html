@@ -324,8 +324,8 @@ function buildScene(p, W, H) {
 
   // Compressed complexity range: min ≈ 8 visible shapes, max ≈ moderate density
   const c         = p.complexity;
-  const nRings    = Math.round(2 + c * 6);  // 2–8
-  const nBaseSegs = Math.round(2 + c * 5);  // 2–7
+  const nRings    = Math.round(2 + c * 12);  // 2–14
+  const nBaseSegs = Math.round(2 + c * 10);  // 2–12
 
   const seed  = (parseInt(p.seed,10) || 1) >>> 0;
   const rng   = mulberry32(seed);
