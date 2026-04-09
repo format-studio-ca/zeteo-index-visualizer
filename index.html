@@ -176,6 +176,7 @@ input[type=range]::-webkit-slider-thumb:hover { background:#fff; }
       <div class="btn-group" id="bg-group">
         <button class="btn active" data-bg="dark">Dark</button>
         <button class="btn" data-bg="light">Light</button>
+        <button class="btn" data-bg="clear">Clear</button>
       </div>
     </div>
     <div class="ctrl">
@@ -289,7 +290,7 @@ const state = {
 
 function getPalette(p) {
   return {
-    bg:          p.bgMode === 'dark' ? PRIMARY_BLUE.bgDark : PRIMARY_BLUE.bgLight,
+    bg:          p.bgMode === 'dark' ? PRIMARY_BLUE.bgDark : p.bgMode === 'light' ? PRIMARY_BLUE.bgLight : null,
     fills:       PRIMARY_BLUE.fills,
     accentFills: ACCENTS[p.accentColor].fills,
   };
@@ -403,9 +404,12 @@ function renderToCanvas(canvas, p) {
   const { bg }               = buildBackground(p);
   const { ox, oy, segments } = buildScene(p, W, H);
 
-  // Solid bg
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  // Solid bg (skip for transparent/clear mode)
+  ctx.clearRect(0, 0, W, H);
+  if (bg) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+  }
 
   // Arc segments
   ctx.save();
@@ -459,7 +463,7 @@ function renderToSVG(p, W, H) {
   <defs>
     <clipPath id="bounds"><rect width="${W}" height="${H}"/></clipPath>
   </defs>
-  <rect width="${W}" height="${H}" fill="${bg}"/>
+  ${bg ? `<rect width="${W}" height="${H}" fill="${bg}"/>` : ''}
   <g clip-path="url(#bounds)">
 ${pathEls.join('\n')}
   </g>
