@@ -338,11 +338,8 @@ function buildScene(p, W, H) {
   const segments = [];
 
   for (let i = 0; i < nRings; i++) {
-    // Ring radial bounds — substantially thicker than step for layered overlap
-    const thickMod = 1.25 + rng() * v * 1.20 + (1 - v) * 0.10;
-    const thickness = step * Math.max(0.40, thickMod);
+    // Ring anchor — each segment gets its own thickness
     const innerR = minR + i * step;
-    const outerR = innerR + thickness;
 
     // Per-ring segment count
     const segVar   = Math.round((rng() - 0.5) * v * nBaseSegs * 0.6);
@@ -371,10 +368,11 @@ function buildScene(p, W, H) {
       const width = period * (wMin + rng() * wSpan) * (1 - gapFrac);
       const se    = ss + Math.max(0.015, width);
 
-      // Radial jitter — segments bleed slightly beyond ring bounds
-      const rjit = step * v * 0.38;
+      // Per-segment radial thickness: ranges from thin slivers to chunky bands
+      const segThick = step * (0.4 + rng() * 2.2);
+      const rjit = step * v * 0.25;
       const ri   = Math.max(0, innerR - rng() * rjit * 0.5);
-      const ro   = outerR + rng() * rjit;
+      const ro   = innerR + segThick + rng() * rjit;
 
       // Color: primary fills or accent fills
       const useAccent = rng() < p.accentMix;
