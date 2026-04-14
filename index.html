@@ -80,6 +80,15 @@ input[type=range]::-webkit-slider-thumb:hover { background:#fff; }
 .origin-btn:hover .dot { background:var(--text); }
 .origin-btn.active:hover .dot { background:#000; }
 
+input[type=text] {
+  width: 100%; padding: 5px 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-bright); font-family: var(--mono); font-size: 11px;
+  border-radius: var(--r); outline: none; box-sizing: border-box;
+}
+input[type=text]:focus { border-color: #404040; }
+input[type=text]::placeholder { color: var(--text-dim); }
+
 .regen-sec { padding: 10px 15px; border-bottom: 1px solid var(--border); }
 .regen-btn {
   width: 100%; padding: 9px 0;
@@ -131,6 +140,10 @@ input[type=range]::-webkit-slider-thumb:hover { background:#fff; }
 
   <div class="sec">
     <div class="sec-lbl">Composition</div>
+    <div class="ctrl">
+      <div class="ctrl-row"><span class="ctrl-lbl">Seed ID</span></div>
+      <input type="text" id="seed-input" placeholder="e.g. 042831" maxlength="6">
+    </div>
     <div class="ctrl">
       <div class="ctrl-row"><span class="ctrl-lbl">Origin</span></div>
       <div class="origin-grid" id="origin-grid"></div>
@@ -603,9 +616,20 @@ function buildAccentButtons() {
   });
 }
 
+// Seed input
+const seedInput = document.getElementById('seed-input');
+seedInput.addEventListener('change', () => {
+  const val = parseInt(seedInput.value, 10);
+  if (!isNaN(val) && val > 0) {
+    state.seed = val % 999983 || 1;
+    scheduleRender();
+  }
+});
+
 // Regenerate
 document.getElementById('regen-btn').addEventListener('click', () => {
   state.seed = Math.floor(Math.random() * 999983);
+  seedInput.value = String(state.seed).padStart(6, '0');
   scheduleRender();
 });
 
